@@ -5,15 +5,16 @@ app = Flask(__name__)
 @app.route('/process_query', methods=['POST'])
 def process_query():
     data = request.get_json()
+    try:
+        query_result = data.get('queryResult', {})
+        query_text = query_result.get('queryText', '')
+        parameters = query_result.get('parameters', {})
 
-    # Extract parameters
-    query_text = data.get('queryResult', {}).get('queryText', 'No query text')
-    language = data.get('queryResult', {}).get('parameters', {}).get('language', 'No language')
-    code_snippet = data.get('queryResult', {}).get('parameters', {}).get('code', 'No code snippet')
+        code_snippet = parameters.get('code', 'No code snippet provided')
+        language = parameters.get('language', 'No language specified')
 
-    # Process the request and prepare a response
-    response_text = f"Processing your {language} code snippet: {code_snippet}"
+        response_text = f"Processing your {language} code snippet: {code_snippet}"
+        return jsonify({"fulfillmentText": response_text})
 
-    return jsonify({
-        "fulfillmentText": response_text
-    })
+    except Exception as e:
+        return jsonify({"fulfillmentText": f"Error: {str(e)}"}), 500
