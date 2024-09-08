@@ -44,24 +44,32 @@ logging.basicConfig(level=logging.INFO)
 
 @app.post("/process_query")
 async def process_query(request_body: RequestBody):
-    logging.info(f"Received request: {request_body.json()}")
     code = request_body.queryResult.parameters.code
     programminglanguage = request_body.queryResult.parameters.programminglanguage
 
     try:
+        # Create a generative model
         model = genai.GenerativeModel("gemini-1.5-flash")
         
+        # Generate content based on the user's input
         prompt = (
             f"Generate a {programminglanguage} code snippet that performs the following task: '{code}'. "
             "The response should be formatted as a clean, well-structured code snippet, similar to how it would appear in a code editor."
         )
         response = model.generate_content(prompt)
         
-        logging.info(f"Generated response: {response.text.strip()}")
-        
+        # Return the generated text as a text message for Dialogflow
         return {
-            "generated_code": response.text.strip()
+            "fulfillmentMessages": [
+                {
+                    "text": {
+                        "text": [
+                            response.text.strip()
+                        ]
+                    }
+                }
+            ]
         }
     except Exception as e:
-        logging.error(f"Error: {e}")
+        print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
