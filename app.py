@@ -13,6 +13,10 @@ app = FastAPI()
 # Set your Gemini API key from environment variable
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
+# Ensure the API key is loaded
+if GEMINI_API_KEY is None:
+    raise ValueError("GEMINI_API_KEY environment variable is not set")
+
 # Configure the Gemini API client
 genai.configure(api_key=GEMINI_API_KEY)
 
@@ -33,11 +37,10 @@ async def process_query(request_body: RequestBody):
     programminglanguage = request_body.queryResult.parameters.programminglanguage
 
     try:
-        # Create a generative model
+        # Create a generative model instance
         model = genai.GenerativeModel("gemini-1.5-flash")
         
         # Generate content based on the user's input
-        # Make sure to specify that you want exact code and proper formatting
         prompt = (
             f"Generate a {programminglanguage} code snippet that performs the following task: '{code}'. "
             "The response should be formatted as a clean, well-structured code snippet, similar to how it would appear in a code editor."
