@@ -4,27 +4,25 @@ import os
 import google.generativeai as genai
 from pydantic import BaseModel
 from dotenv import load_dotenv
-import logging
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Initialize FastAPI app
 app = FastAPI()
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust as necessary for security
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Set your Gemini API key from environment variable
+# Set your Gemini API key
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
-# Configure the Gemini API client
+# Configure Gemini API client
 genai.configure(api_key=GEMINI_API_KEY)
 
 # Define Pydantic models for request validation
@@ -38,9 +36,8 @@ class QueryResult(BaseModel):
 class RequestBody(BaseModel):
     queryResult: QueryResult
 
-
-
-logging.basicConfig(level=logging.INFO)
+class FallbackQuery(BaseModel):
+    contents: list
 
 @app.post("/process_query")
 async def process_query(request_body: RequestBody):
@@ -54,21 +51,32 @@ async def process_query(request_body: RequestBody):
         # Generate content based on the user's input
         prompt = (
             f"Generate a {programminglanguage} code snippet that performs the following task: '{code}'. "
-            "The response should be formatted as a clean, well-structured code snippet, similar to how it would appear in a code editor."
+            "The response should be formatted as a clean, well-structured code snippet."
         )
         response = model.generate_content(prompt)
         
-        # Return the generated text as a text message for Dialogflow
         return {
-            "fulfillmentMessages": [
-                {
-                    "text": {
-                        "text": [
-                            response.text.strip()
-                        ]
-                    }
-                }
-            ]
+            "generated_code": response.text.strip()
+        }
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/fallback_query")
+async def fallback_query(fallback_body: FallbackQuery):
+    try:
+        query_text = fallback_body.contents[0]["parts"][0]["text"]
+
+        # Create a generative model
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        # Generate content for the fallback query
+        prompt = f"Answer the following question: {query_text}"
+        response = model.generate_content(prompt)
+        
+        return {
+            "response": response.text.strip()
         }
     except Exception as e:
         print(f"Error: {e}")
